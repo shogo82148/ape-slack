@@ -36,6 +36,7 @@ func newCommand(name string, args []string) *Command {
 type Event struct {
 	data    map[string]interface{}
 	command *Command
+	Nick    string
 }
 
 func (e *Event) Command() *Command {
@@ -83,6 +84,7 @@ type Connection struct {
 	initActions   []callbackFunc
 	defaultAction callbackFunc
 	actions       map[string]callbackFunc
+	userMap       map[string]string
 }
 
 func (con *Connection) Channel() string {
@@ -153,6 +155,11 @@ func (con *Connection) Loop() {
 				break
 			}
 			e := newEvent(data)
+			if userId, ok := data["user"]; ok && userId != nil {
+				if username, ok := con.userMap[userId.(string)]; ok {
+					e.Nick = username
+				}
+			}
 			name := e.targetName()
 			if name != con.userName && name != "<@"+con.userId+">" {
 				break
@@ -182,6 +189,10 @@ func (con *Connection) newWSConnection() (*websocket.Conn, error) {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 		} `json:"self"`
+		Users []struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"users"`
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&r)
@@ -191,6 +202,11 @@ func (con *Connection) newWSConnection() (*websocket.Conn, error) {
 
 	con.userId = r.Self.Id
 	con.userName = r.Self.Name
+	userMap := map[string]string{}
+	for _, user := range r.Users {
+		userMap[user.Id] = user.Name
+	}
+	con.userMap = userMap
 
 	return websocket.Dial(r.Url, "", "https://slack.com/")
 }
