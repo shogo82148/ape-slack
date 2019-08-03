@@ -3,6 +3,7 @@ package ape
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -135,6 +136,7 @@ func NewConnection(token string) *Connection {
 }
 
 func (con *Connection) Loop() {
+L:
 	ws, err := con.newWSConnection()
 	if err != nil {
 		panic(err)
@@ -142,7 +144,11 @@ func (con *Connection) Loop() {
 
 	for {
 		var data map[string]interface{}
-		websocket.JSON.Receive(ws, &data)
+		if err := websocket.JSON.Receive(ws, &data); err != nil {
+			log.Println("Receive failed. Conn will be reset. cause:", err)
+			ws.Close()
+			goto L
+		}
 		switch data["type"] {
 		case "hello":
 			e := newEvent(data)
