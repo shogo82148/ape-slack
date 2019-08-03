@@ -205,6 +205,7 @@ func (con *Connection) newWSConnection() (*websocket.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	con.userId = r.Self.Id
 	con.userName = r.Self.Name
